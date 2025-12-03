@@ -1,162 +1,139 @@
-import express from "express";
-import fs from "fs";
+const express = require('express');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 app.use(express.json());
 
-// Baca file JSON
-function readData(path) {
-  return JSON.parse(fs.readFileSync(path, "utf8"));
+function readJSON(filePath) {
+  const data = fs.readFileSync(filePath, 'utf8');
+  return JSON.parse(data);
 }
 
-// Simpan lagi ke file JSON
-function saveData(path, data) {
-  fs.writeFileSync(path, JSON.stringify(data, null, 2));
+function writeJSON(filePath, data) {
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
 }
 
-const vendorAPath = "./vendors/vendorA/vendorA.json";
-const vendorBPath = "./vendors/vendorB/vendorB.json";
-const vendorCPath = "./vendors/vendorC/vendorC.json";
+const vendorAPath = path.join(__dirname, 'vendors', 'vendorA', 'vendorA.json');
+const vendorBPath = path.join(__dirname, 'vendors', 'vendorB', 'vendorB.json');
+const vendorCPath = path.join(__dirname, 'vendors', 'vendorC', 'vendorC.json');
 
-// GET all
-app.get("/vendorA", (req, res) => {
-  const data = readData(vendorAPath);
+app.get('/status', (req, res) => {
+  res.json({ ok: true });
+});
+
+// vendor A
+app.get('/vendorA', (req, res) => {
+  const data = readJSON(vendorAPath);
   res.json(data);
 });
 
-// POST add
-app.post("/vendorA", (req, res) => {
-  const list = readData(vendorAPath);
+app.post('/vendorA', (req, res) => {
+  const list = readJSON(vendorAPath);
   list.push(req.body);
-  saveData(vendorAPath, list);
-
-  res.json({
-    pesan: "Data baru berhasil ditambahkan",
-    data: list
-  });
+  writeJSON(vendorAPath, list);
+  res.json({ pesan: 'data ditambah', data: list });
 });
 
-// PUT update
-app.put("/vendorA/:id", (req, res) => {
-  const list = readData(vendorAPath);
-  const id = req.params.id;
-
-  const index = list.findIndex(item => item.kd_produk == id);
+app.put('/vendorA/:id', (req, res) => {
+  const list = readJSON(vendorAPath);
+  const index = list.findIndex(item => item.kd_produk == req.params.id);
+  
   if (index === -1) {
-    return res.status(404).json({ pesan: "Data tidak ditemukan" });
+    return res.status(404).json({ pesan: 'gak ketemu' });
   }
 
   list[index] = { ...list[index], ...req.body };
-  saveData(vendorAPath, list);
-
-  res.json({
-    pesan: "Data berhasil diupdate",
-    data: list
-  });
+  writeJSON(vendorAPath, list);
+  res.json({ pesan: 'diupdate', data: list });
 });
 
-// DELETE
-app.delete("/vendorA/:id", (req, res) => {
-  let list = readData(vendorAPath);
-  const id = req.params.id;
-
-  list = list.filter(item => item.kd_produk != id);
-  saveData(vendorAPath, list);
-
-  res.json({
-    pesan: "Data berhasil dihapus",
-    data: list
-  });
+app.delete('/vendorA/:id', (req, res) => {
+  let list = readJSON(vendorAPath);
+  list = list.filter(item => item.kd_produk != req.params.id);
+  writeJSON(vendorAPath, list);
+  res.json({ pesan: 'dihapus', data: list });
 });
 
-//VENDOR B 
-app.get("/vendorB", (req, res) => {
+// vendor B
+app.get('/vendorB', (req, res) => {
   res.json(readJSON(vendorBPath));
 });
 
-app.post("/vendorB", (req, res) => {
+app.post('/vendorB', (req, res) => {
   const data = readJSON(vendorBPath);
   data.push(req.body);
   writeJSON(vendorBPath, data);
-  res.json({ message: "Berhasil tambah data Vendor B", data });
+  res.json({ message: 'data ditambah', data });
 });
 
-app.put("/vendorB/:sku", (req, res) => {
+app.put('/vendorB/:sku', (req, res) => {
   let data = readJSON(vendorBPath);
-  const sku = req.params.sku;
-
-  const index = data.findIndex(item => item.sku == sku);
-  if (index === -1) return res.status(404).json({ message: "Data tidak ditemukan" });
+  const index = data.findIndex(item => item.sku == req.params.sku);
+  
+  if (index === -1) {
+    return res.status(404).json({ message: 'ga ada' });
+  }
 
   data[index] = { ...data[index], ...req.body };
   writeJSON(vendorBPath, data);
-  res.json({ message: "Berhasil update data Vendor B", data });
+  res.json({ message: 'updated', data });
 });
 
-app.delete("/vendorB/:sku", (req, res) => {
+app.delete('/vendorB/:sku', (req, res) => {
   let data = readJSON(vendorBPath);
-  const sku = req.params.sku;
-
-  data = data.filter(item => item.sku != sku);
+  data = data.filter(item => item.sku != req.params.sku);
   writeJSON(vendorBPath, data);
-  res.json({ message: "Berhasil hapus data Vendor B", data });
+  res.json({ message: 'deleted', data });
 });
 
-//VENDOR C
-//all get
-app.get("/vendorC", (req, res) => {
-  const data = readJSON(vendorCPath);
-  res.json(data);
+// vendor C
+app.get('/vendorC', (req, res) => {
+  res.json(readJSON(vendorCPath));
 });
 
-//id get
-app.get("/vendorC/:id", (req, res) => {
+app.get('/vendorC/:id', (req, res) => {
   const data = readJSON(vendorCPath);
-  const item = data.find((i) => i.id == req.params.id);
+  const item = data.find(i => i.id == req.params.id);
   
-  if (!item) return res.status(404).json({ message: "Data tidak ditemukan" });
-
+  if (!item) return res.status(404).json({ message: 'ga ketemu' });
   res.json(item);
 });
 
-//post
-app.post("/vendorC", (req, res) => {
+app.post('/vendorC', (req, res) => {
   const data = readJSON(vendorCPath);
-
   data.push(req.body); 
   writeJSON(vendorCPath, data);
-
-  res.json({ message: "Produk berhasil ditambahkan!", data });
+  res.json({ message: 'ditambah', data });
 });
 
-//put
-app.put("/vendorC/:id", (req, res) => {
+app.put('/vendorC/:id', (req, res) => {
   let data = readJSON(vendorCPath);
-  const id = req.params.id;
+  const index = data.findIndex(i => i.id == req.params.id);
 
-  const index = data.findIndex((i) => i.id == id);
-
-  if (index === -1)
-    return res.status(404).json({ message: "Produk tidak ditemukan" });
+  if (index === -1) {
+    return res.status(404).json({ message: 'ga ada' });
+  }
 
   data[index] = { ...data[index], ...req.body };
   writeJSON(vendorCPath, data);
-
-  res.json({ message: "Produk berhasil diupdate!", data });
+  res.json({ message: 'updated', data });
 });
 
-//delete
-app.delete("/vendorC/:id", (req, res) => {
+app.delete('/vendorC/:id', (req, res) => {
   let data = readJSON(vendorCPath);
-  const id = req.params.id;
-
-  const filtered = data.filter((i) => i.id != id);
+  const filtered = data.filter(i => i.id != req.params.id);
   writeJSON(vendorCPath, filtered);
-
-  res.json({ message: "Produk berhasil dihapus!", data: filtered });
+  res.json({ message: 'deleted', data: filtered });
 });
 
-// menjalankan server
-app.listen(3000, () => {
-  console.log("Server berjalan di http://localhost:3000");
+app.use((req, res) => {
+  res.status(404).json({ error: 'ga ada' });
 });
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log('jalan di port ' + PORT);
+});
+
+module.exports = app;
