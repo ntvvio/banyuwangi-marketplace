@@ -67,6 +67,39 @@ app.delete("/vendorA/:id", (req, res) => {
   });
 });
 
+app.get("/vendorB", (req, res) => {
+  res.json(readJSON(vendorBPath));
+});
+
+app.post("/vendorB", (req, res) => {
+  const data = readJSON(vendorBPath);
+  data.push(req.body);
+  writeJSON(vendorBPath, data);
+  res.json({ message: "Berhasil tambah data Vendor B", data });
+});
+
+app.put("/vendorB/:sku", (req, res) => {
+  let data = readJSON(vendorBPath);
+  const sku = req.params.sku;
+
+  const index = data.findIndex(item => item.sku == sku);
+  if (index === -1) return res.status(404).json({ message: "Data tidak ditemukan" });
+
+  data[index] = { ...data[index], ...req.body };
+  writeJSON(vendorBPath, data);
+  res.json({ message: "Berhasil update data Vendor B", data });
+});
+
+app.delete("/vendorB/:sku", (req, res) => {
+  let data = readJSON(vendorBPath);
+  const sku = req.params.sku;
+
+  data = data.filter(item => item.sku != sku);
+  writeJSON(vendorBPath, data);
+  res.json({ message: "Berhasil hapus data Vendor B", data });
+});
+
+
 // Jalankan server
 app.listen(3000, () => {
   console.log("CRUD API Vendor A berjalan di http://localhost:3000/vendorA");
