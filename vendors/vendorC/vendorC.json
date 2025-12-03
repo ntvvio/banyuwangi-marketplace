@@ -1,0 +1,50 @@
+[
+  {
+    "id": 601,
+    "details": {
+      "name": "Nasi Tempong",
+      "category": "Food"
+    },
+    "pricing": {
+      "base_price": 15000,
+      "tax": 1500
+    },
+    "stock": 40
+  },
+  {
+    "id": 602,
+    "details": {
+      "name": "Ayam Geprek",
+      "category": "Food"
+    },
+    "pricing": {
+      "base_price": 10000,
+      "tax": 1000
+    },
+    "stock": 35
+  },
+  {
+    "id": 603,
+    "details": {
+      "name": "Es Teh",
+      "category": "Beverage"
+    },
+    "pricing": {
+      "base_price": 3500,
+      "tax": 350
+    },
+    "stock": 80
+  },
+  {
+    "id": 604,
+    "details": {
+      "name": "Es Jeruk",
+      "category": "Beverage"
+    },
+    "pricing": {
+      "base_price": 4000,
+      "tax": 400
+    },
+    "stock": 60
+  }
+]

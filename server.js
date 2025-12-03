@@ -15,6 +15,8 @@ function saveData(path, data) {
 }
 
 const vendorAPath = "./vendors/vendorA/vendorA.json";
+const vendorBPath = "./vendors/vendorB/vendorB.json";
+const vendorCPath = "./vendors/vendorC/vendorC.json";
 
 // GET all
 app.get("/vendorA", (req, res) => {
@@ -67,6 +69,7 @@ app.delete("/vendorA/:id", (req, res) => {
   });
 });
 
+//VENDOR B 
 app.get("/vendorB", (req, res) => {
   res.json(readJSON(vendorBPath));
 });
@@ -99,8 +102,61 @@ app.delete("/vendorB/:sku", (req, res) => {
   res.json({ message: "Berhasil hapus data Vendor B", data });
 });
 
+//VENDOR C
+//all get
+app.get("/vendorC", (req, res) => {
+  const data = readJSON(vendorCPath);
+  res.json(data);
+});
 
-// Jalankan server
+//id get
+app.get("/vendorC/:id", (req, res) => {
+  const data = readJSON(vendorCPath);
+  const item = data.find((i) => i.id == req.params.id);
+  
+  if (!item) return res.status(404).json({ message: "Data tidak ditemukan" });
+
+  res.json(item);
+});
+
+//post
+app.post("/vendorC", (req, res) => {
+  const data = readJSON(vendorCPath);
+
+  data.push(req.body); 
+  writeJSON(vendorCPath, data);
+
+  res.json({ message: "Produk berhasil ditambahkan!", data });
+});
+
+//put
+app.put("/vendorC/:id", (req, res) => {
+  let data = readJSON(vendorCPath);
+  const id = req.params.id;
+
+  const index = data.findIndex((i) => i.id == id);
+
+  if (index === -1)
+    return res.status(404).json({ message: "Produk tidak ditemukan" });
+
+  data[index] = { ...data[index], ...req.body };
+  writeJSON(vendorCPath, data);
+
+  res.json({ message: "Produk berhasil diupdate!", data });
+});
+
+//delete
+app.delete("/vendorC/:id", (req, res) => {
+  let data = readJSON(vendorCPath);
+  const id = req.params.id;
+
+  const filtered = data.filter((i) => i.id != id);
+  writeJSON(vendorCPath, filtered);
+
+  res.json({ message: "Produk berhasil dihapus!", data: filtered });
+});
+
+// menjalankan server
 app.listen(3000, () => {
-  console.log("CRUD API Vendor A berjalan di http://localhost:3000/vendorA");
+  console.log("Server berjalan di http://localhost:3000");
 });
