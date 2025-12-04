@@ -1,9 +1,11 @@
 [
   {
-    "kd_produk": "A001",
+    "kd_produk": "A001 Baru",
     "nm_brg": "Kopi Bubuk 100g",
     "hrg": "15000",
-    "ket_stok": "ada"
+    "ket_stok": "ada",
+    "nama": "Produk Baru A",
+    "harga": 20000
   },
   {
     "kd_produk": "A002",
@@ -28,5 +30,11 @@
     "nm_brg": "Mie Instan Ayam",
     "hrg": "3500",
     "ket_stok": "ada"
+  },
+  null,
+  {
+    "kd_produk": "A001",
+    "nama": "Produk Baru A",
+    "harga": 20000
   }
 ]

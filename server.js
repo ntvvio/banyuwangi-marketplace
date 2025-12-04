@@ -1,10 +1,20 @@
+// ===========================
+//      IMPORT MODULE
+// ===========================
 const express = require('express');
-const fs = require('fs');
 const path = require('path');
+const fs = require('fs');
+
+// Import router marketplace
+const marketplaceRouter = require('./marketplace');
 
 const app = express();
 app.use(express.json());
 
+
+// ===========================
+//  FUNGSI BACA & TULIS JSON
+// ===========================
 function readJSON(filePath) {
   const data = fs.readFileSync(filePath, 'utf8');
   return JSON.parse(data);
@@ -14,18 +24,28 @@ function writeJSON(filePath, data) {
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
 }
 
+
+// ===========================
+//      PATH VENDOR
+// ===========================
 const vendorAPath = path.join(__dirname, 'vendors', 'vendorA', 'vendorA.json');
 const vendorBPath = path.join(__dirname, 'vendors', 'vendorB', 'vendorB.json');
 const vendorCPath = path.join(__dirname, 'vendors', 'vendorC', 'vendorC.json');
 
+
+// ===========================
+//      STATUS API
+// ===========================
 app.get('/status', (req, res) => {
   res.json({ ok: true });
 });
 
-// vendor A
+
+// ===========================
+//          VENDOR A
+// ===========================
 app.get('/vendorA', (req, res) => {
-  const data = readJSON(vendorAPath);
-  res.json(data);
+  res.json(readJSON(vendorAPath));
 });
 
 app.post('/vendorA', (req, res) => {
@@ -38,7 +58,7 @@ app.post('/vendorA', (req, res) => {
 app.put('/vendorA/:id', (req, res) => {
   const list = readJSON(vendorAPath);
   const index = list.findIndex(item => item.kd_produk == req.params.id);
-  
+
   if (index === -1) {
     return res.status(404).json({ pesan: 'gak ketemu' });
   }
@@ -55,7 +75,10 @@ app.delete('/vendorA/:id', (req, res) => {
   res.json({ pesan: 'dihapus', data: list });
 });
 
-// vendor B
+
+// ===========================
+//          VENDOR B
+// ===========================
 app.get('/vendorB', (req, res) => {
   res.json(readJSON(vendorBPath));
 });
@@ -70,7 +93,7 @@ app.post('/vendorB', (req, res) => {
 app.put('/vendorB/:sku', (req, res) => {
   let data = readJSON(vendorBPath);
   const index = data.findIndex(item => item.sku == req.params.sku);
-  
+
   if (index === -1) {
     return res.status(404).json({ message: 'ga ada' });
   }
@@ -87,7 +110,10 @@ app.delete('/vendorB/:sku', (req, res) => {
   res.json({ message: 'deleted', data });
 });
 
-// vendor C
+
+// ===========================
+//          VENDOR C
+// ===========================
 app.get('/vendorC', (req, res) => {
   res.json(readJSON(vendorCPath));
 });
@@ -95,14 +121,14 @@ app.get('/vendorC', (req, res) => {
 app.get('/vendorC/:id', (req, res) => {
   const data = readJSON(vendorCPath);
   const item = data.find(i => i.id == req.params.id);
-  
+
   if (!item) return res.status(404).json({ message: 'ga ketemu' });
   res.json(item);
 });
 
 app.post('/vendorC', (req, res) => {
   const data = readJSON(vendorCPath);
-  data.push(req.body); 
+  data.push(req.body);
   writeJSON(vendorCPath, data);
   res.json({ message: 'ditambah', data });
 });
@@ -122,15 +148,29 @@ app.put('/vendorC/:id', (req, res) => {
 
 app.delete('/vendorC/:id', (req, res) => {
   let data = readJSON(vendorCPath);
-  const filtered = data.filter(i => i.id != req.params.id);
-  writeJSON(vendorCPath, filtered);
-  res.json({ message: 'deleted', data: filtered });
+  data = data.filter(i => i.id != req.params.id);
+  writeJSON(vendorCPath, data);
+  res.json({ message: 'deleted', data });
 });
 
+
+// ===========================
+//  ROUTER MARKETPLACE GABUNGAN
+// ===========================
+app.use('/marketplace', marketplaceRouter);
+
+
+// ===========================
+//     HANDLER 404
+// ===========================
 app.use((req, res) => {
   res.status(404).json({ error: 'ga ada' });
 });
 
+
+// ===========================
+//        JALANKAN SERVER
+// ===========================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log('jalan di port ' + PORT);
