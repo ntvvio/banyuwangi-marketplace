@@ -159,6 +159,77 @@ app.delete('/vendorC/:id', (req, res) => {
 // ===========================
 app.use('/marketplace', marketplaceRouter);
 
+// ===========================
+//     INTEGRASI (LEAD)
+// ===========================
+
+// --- Normalisasi Vendor A ---
+function normalizeVendorA(list) {
+  return list
+    .filter(item => item !== null) // hapus data null
+    .map(item => {
+      const harga = parseInt(item.hrg);  
+      const hargaFinal = harga - (harga * 0.10); // diskon 10%
+
+      return {
+        id: item.kd_produk,
+        name: item.nm_brg,
+        price_final: hargaFinal,
+        stock_status: item.ket_stok === "ada" ? "ada" : "habis",
+        vendor: "Vendor A"
+      };
+    });
+}
+
+// --- Normalisasi Vendor B ---
+function normalizeVendorB(list) {
+  return list.map(item => ({
+    id: item.sku,
+    name: item.productName,
+    price_final: item.price,
+    stock_status: item.isAvailable ? "Tersedia" : "Tidak Tersedia",
+    vendor: "Vendor B"
+  }));
+}
+
+// --- Normalisasi Vendor C ---
+function normalizeVendorC(list) {
+  return list.map(item => {
+    const total = item.pricing.base_price + item.pricing.tax;
+    let name = item.details.name;
+
+    if (item.details.category === "Food") {
+      name += " (Recommended)";
+    }
+
+    return {
+      id: item.id,
+      name: name,
+      price_final: total,
+      stock_status: item.stock > 0 ? "ada" : "habis",
+      vendor: "Vendor C"
+    };
+  });
+}
+
+
+// ===========================
+//     ENDPOINT INTEGRASI
+// ===========================
+app.get('/integrasi', (req, res) => {
+  const dataA = readJSON(vendorAPath);
+  const dataB = readJSON(vendorBPath);
+  const dataC = readJSON(vendorCPath);
+
+  const result = [
+    ...normalizeVendorA(dataA),
+    ...normalizeVendorB(dataB),
+    ...normalizeVendorC(dataC)
+  ];
+
+  res.json(result);
+});
+
 
 // ===========================
 //     HANDLER 404
