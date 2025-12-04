@@ -22,5 +22,17 @@
       "tax": 350
     },
     "stock": 80
+  },
+  {
+    "id": 603,
+    "details": {
+      "name": "Kopi Susu Dingin",
+      "category": "Beverage"
+    },
+    "pricing": {
+      "base_price": 18000,
+      "tax": 1800
+    },
+    "stock": 20
   }
 ]

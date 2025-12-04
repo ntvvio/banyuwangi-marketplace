@@ -1,176 +1,358 @@
-// ===========================
-//      IMPORT MODULE
-// ===========================
 const express = require('express');
 const path = require('path');
-const fs = require('fs');
-
-// Import router marketplace
+const { Pool } = require('pg'); 
 const marketplaceRouter = require('./marketplace');
 
 const app = express();
 app.use(express.json());
 
+//konfigurasi neon
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL, 
+});
 
-// ===========================
-//  FUNGSI BACA & TULIS JSON
-// ===========================
-function readJSON(filePath) {
-  const data = fs.readFileSync(filePath, 'utf8');
-  return JSON.parse(data);
-}
+pool.on('error', (err, client) => {
+  console.error('Unexpected error on idle client', err);
+});
 
-function writeJSON(filePath, data) {
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
-}
-
-
-// ===========================
-//      PATH VENDOR
-// ===========================
-const vendorAPath = path.join(__dirname, 'vendors', 'vendorA', 'vendorA.json');
-const vendorBPath = path.join(__dirname, 'vendors', 'vendorB', 'vendorB.json');
-const vendorCPath = path.join(__dirname, 'vendors', 'vendorC', 'vendorC.json');
-
-
-// ===========================
-//      STATUS API
-// ===========================
 app.get('/status', (req, res) => {
   res.json({ ok: true });
 });
 
-
-// ===========================
-//          VENDOR A
-// ===========================
-app.get('/vendorA', (req, res) => {
-  res.json(readJSON(vendorAPath));
+//vendor A
+//get
+app.get('/vendorA', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM vendor_a ORDER BY kd_produk ASC');
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching Vendor A data:', error);
+    res.status(500).json({ message: 'Internal Server Error (DB Fetch A)' });
+  }
 });
 
-app.post('/vendorA', (req, res) => {
-  const list = readJSON(vendorAPath);
-  list.push(req.body);
-  writeJSON(vendorAPath, list);
-  res.json({ pesan: 'data ditambah', data: list });
+//post
+app.post('/vendorA', async (req, res) => {
+  const { kd_produk, nama_produk, harga, stok } = req.body;
+  
+  if (!kd_produk || !nama_produk || !harga || !stok) {
+      return res.status(400).json({ message: 'Data Vendor A tidak lengkap.' });
+  }
+  
+  try {
+    const queryText = `
+      INSERT INTO vendor_a (kd_produk, nm_brg, hrg, ket_stok)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *;
+    `;
+    const result = await pool.query(queryText, [kd_produk, nama_produk, harga, stok]);
+    res.status(201).json({ pesan: 'data ditambah', data: result.rows[0] });
+  } catch (error) {
+    console.error('Error inserting Vendor A item:', error);
+    res.status(500).json({ message: 'Gagal menambahkan data (DB Insert A)' });
+  }
 });
 
-app.put('/vendorA/:id', (req, res) => {
-  const list = readJSON(vendorAPath);
-  const index = list.findIndex(item => item.kd_produk == req.params.id);
+//put
+app.put('/vendorA/:id', async (req, res) => {
+  const { id } = req.params; 
+  const updates = req.body;
 
-  if (index === -1) {
-    return res.status(404).json({ pesan: 'gak ketemu' });
+  const setClauses = [];
+  const values = [];
+  let index = 1;
+
+  if (updates.nama_produk !== undefined) {
+      setClauses.push(`nm_brg = $${index++}`);
+      values.push(updates.nama_produk);
+  }
+  if (updates.harga !== undefined) {
+      setClauses.push(`hrg = $${index++}`);
+      values.push(updates.harga);
+  }
+  if (updates.stok !== undefined) {
+      setClauses.push(`ket_stok = $${index++}`);
+      values.push(updates.stok);
+  }
+  
+  if (setClauses.length === 0) {
+    return res.status(400).json({ message: 'Tidak ada data untuk diupdate' });
   }
 
-  list[index] = { ...list[index], ...req.body };
-  writeJSON(vendorAPath, list);
-  res.json({ pesan: 'diupdate', data: list });
+  values.push(id);
+
+  try {
+    const queryText = `
+      UPDATE vendor_a
+      SET ${setClauses.join(', ')}
+      WHERE kd_produk = $${index} 
+      RETURNING *;
+    `;
+    const result = await pool.query(queryText, values);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'ga ada' });
+    }
+    res.json({ pesan: 'diupdate', data: result.rows[0] });
+  } catch (error) {
+    console.error('Error updating Vendor A item:', error);
+    res.status(500).json({ message: 'Gagal update data (DB Update A)' });
+  }
 });
 
-app.delete('/vendorA/:id', (req, res) => {
-  let list = readJSON(vendorAPath);
-  list = list.filter(item => item.kd_produk != req.params.id);
-  writeJSON(vendorAPath, list);
-  res.json({ pesan: 'dihapus', data: list });
+//delete
+app.delete('/vendorA/:id', async (req, res) => {
+  const { id } = req.params; 
+  try {
+    const result = await pool.query('DELETE FROM vendor_a WHERE kd_produk = $1 RETURNING *', [id]);
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: 'ga ada' });
+    }
+
+    res.json({ pesan: 'dihapus', data: result.rows[0] });
+  } catch (error) {
+    console.error('Error deleting Vendor A item:', error);
+    res.status(500).json({ message: 'Gagal delete data (DB Delete A)' });
+  }
 });
 
-
-// ===========================
-//          VENDOR B
-// ===========================
-app.get('/vendorB', (req, res) => {
-  res.json(readJSON(vendorBPath));
+//vendor b
+//get
+app.get('/vendorB', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM vendor_b ORDER BY sku ASC');
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching Vendor B data:', error);
+    res.status(500).json({ message: 'Internal Server Error (DB Fetch B)' });
+  }
 });
 
-app.post('/vendorB', (req, res) => {
-  const data = readJSON(vendorBPath);
-  data.push(req.body);
-  writeJSON(vendorBPath, data);
-  res.json({ message: 'data ditambah', data });
+//post
+app.post('/vendorB', async (req, res) => {
+  const { sku, product_name, price, is_available } = req.body;
+  
+  if (!sku || !product_name || price === undefined || is_available === undefined) {
+      return res.status(400).json({ message: 'Data Vendor B tidak lengkap.' });
+  }
+  
+  try {
+    const queryText = `
+      INSERT INTO vendor_b (sku, product_name, price, is_available)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *;
+    `;
+    const result = await pool.query(queryText, [sku, product_name, price, is_available]);
+    res.status(201).json({ message: 'data ditambah', data: result.rows[0] });
+  } catch (error) {
+    console.error('Error inserting Vendor B item:', error);
+    res.status(500).json({ message: 'Gagal menambahkan data (DB Insert B)' });
+  }
 });
 
-app.put('/vendorB/:sku', (req, res) => {
-  let data = readJSON(vendorBPath);
-  const index = data.findIndex(item => item.sku == req.params.sku);
+//put
+app.put('/vendorB/:sku', async (req, res) => {
+  const { sku } = req.params;
+  const updates = req.body;
 
-  if (index === -1) {
-    return res.status(404).json({ message: 'ga ada' });
+  const setClauses = [];
+  const values = [];
+  let index = 1;
+
+  if (updates.product_name !== undefined) {
+      setClauses.push(`product_name = $${index++}`);
+      values.push(updates.product_name);
+  }
+  if (updates.price !== undefined) {
+      setClauses.push(`price = $${index++}`);
+      values.push(updates.price);
+  }
+  if (updates.is_available !== undefined) {
+      setClauses.push(`is_available = $${index++}`);
+      values.push(updates.is_available);
   }
 
-  data[index] = { ...data[index], ...req.body };
-  writeJSON(vendorBPath, data);
-  res.json({ message: 'updated', data });
-});
-
-app.delete('/vendorB/:sku', (req, res) => {
-  let data = readJSON(vendorBPath);
-  data = data.filter(item => item.sku != req.params.sku);
-  writeJSON(vendorBPath, data);
-  res.json({ message: 'deleted', data });
-});
-
-
-// ===========================
-//          VENDOR C
-// ===========================
-app.get('/vendorC', (req, res) => {
-  res.json(readJSON(vendorCPath));
-});
-
-app.get('/vendorC/:id', (req, res) => {
-  const data = readJSON(vendorCPath);
-  const item = data.find(i => i.id == req.params.id);
-
-  if (!item) return res.status(404).json({ message: 'ga ketemu' });
-  res.json(item);
-});
-
-app.post('/vendorC', (req, res) => {
-  const data = readJSON(vendorCPath);
-  data.push(req.body);
-  writeJSON(vendorCPath, data);
-  res.json({ message: 'ditambah', data });
-});
-
-app.put('/vendorC/:id', (req, res) => {
-  let data = readJSON(vendorCPath);
-  const index = data.findIndex(i => i.id == req.params.id);
-
-  if (index === -1) {
-    return res.status(404).json({ message: 'ga ada' });
+  if (setClauses.length === 0) {
+    return res.status(400).json({ message: 'Tidak ada data untuk diupdate' });
   }
 
-  data[index] = { ...data[index], ...req.body };
-  writeJSON(vendorCPath, data);
-  res.json({ message: 'updated', data });
+  values.push(sku);
+
+  try {
+    const queryText = `
+      UPDATE vendor_b
+      SET ${setClauses.join(', ')}
+      WHERE sku = $${index} 
+      RETURNING *;
+    `;
+    const result = await pool.query(queryText, values);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'ga ada' });
+    }
+    res.json({ message: 'updated', data: result.rows[0] });
+  } catch (error) {
+    console.error('Error updating Vendor B item:', error);
+    res.status(500).json({ message: 'Gagal update data (DB Update B)' });
+  }
 });
 
-app.delete('/vendorC/:id', (req, res) => {
-  let data = readJSON(vendorCPath);
-  data = data.filter(i => i.id != req.params.id);
-  writeJSON(vendorCPath, data);
-  res.json({ message: 'deleted', data });
+//delete
+app.delete('/vendorB/:sku', async (req, res) => {
+  const { sku } = req.params;
+  try {
+    const result = await pool.query('DELETE FROM vendor_b WHERE sku = $1 RETURNING *', [sku]);
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: 'ga ada' });
+    }
+
+    res.json({ message: 'deleted', data: result.rows[0] });
+  } catch (error) {
+    console.error('Error deleting Vendor B item:', error);
+    res.status(500).json({ message: 'Gagal delete data (DB Delete B)' });
+  }
 });
 
+//vendor c
+//get
+app.get('/vendorC', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM vendor_c ORDER BY id ASC');
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching Vendor C data:', error);
+    res.status(500).json({ message: 'Internal Server Error (DB Fetch C)' });
+  }
+});
 
-// ===========================
-//  ROUTER MARKETPLACE GABUNGAN
-// ===========================
+//get
+app.get('/vendorC/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query('SELECT * FROM vendor_c WHERE id = $1', [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'ga ketemu' });
+    }
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching single Vendor C item:', error);
+    res.status(500).json({ message: 'Internal Server Error (DB Fetch Single C)' });
+  }
+});
+
+//post
+app.post('/vendorC', async (req, res) => {
+  const { details, pricing, stock } = req.body;
+  
+  const name = details?.name;
+  const category = details?.category;
+  const base_price = pricing?.base_price;
+  const tax = pricing?.tax;
+
+  if (!name || !base_price || stock === undefined) {
+      return res.status(400).json({ message: 'Data Vendor C tidak lengkap.' });
+  }
+  
+  try {
+    const queryText = `
+      INSERT INTO vendor_c (name, category, base_price, tax, stock)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *;
+    `;
+    const result = await pool.query(queryText, [name, category, base_price, tax, stock]);
+    res.status(201).json({ message: 'ditambah', data: result.rows[0] });
+  } catch (error) {
+    console.error('Error inserting Vendor C item:', error);
+    res.status(500).json({ message: 'Gagal menambahkan data (DB Insert C)' });
+  }
+});
+
+//put
+app.put('/vendorC/:id', async (req, res) => {
+  const { id } = req.params;
+  const updates = req.body;
+
+  const setClauses = [];
+  const values = [];
+  let index = 1;
+
+  if (updates.details) {
+      if (updates.details.name !== undefined) {
+          setClauses.push(`name = $${index++}`);
+          values.push(updates.details.name);
+      }
+      if (updates.details.category !== undefined) {
+          setClauses.push(`category = $${index++}`);
+          values.push(updates.details.category);
+      }
+  }
+  if (updates.pricing) {
+      if (updates.pricing.base_price !== undefined) {
+          setClauses.push(`base_price = $${index++}`);
+          values.push(updates.pricing.base_price);
+      }
+      if (updates.pricing.tax !== undefined) {
+          setClauses.push(`tax = $${index++}`);
+          values.push(updates.pricing.tax);
+      }
+  }
+  if (updates.stock !== undefined) {
+      setClauses.push(`stock = $${index++}`);
+      values.push(updates.stock);
+  }
+
+  if (setClauses.length === 0) {
+    return res.status(400).json({ message: 'Tidak ada data untuk diupdate' });
+  }
+
+  values.push(id); 
+
+  try {
+    const queryText = `
+      UPDATE vendor_c
+      SET ${setClauses.join(', ')}
+      WHERE id = $${index} 
+      RETURNING *;
+    `;
+    const result = await pool.query(queryText, values);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'ga ada' });
+    }
+    res.json({ message: 'updated', data: result.rows[0] });
+  } catch (error) {
+    console.error('Error updating Vendor C item:', error);
+    res.status(500).json({ message: 'Gagal update data (DB Update C)' });
+  }
+});
+
+//delete
+app.delete('/vendorC/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query('DELETE FROM vendor_c WHERE id = $1 RETURNING *', [id]);
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: 'ga ada' });
+    }
+
+    res.json({ message: 'deleted', data: result.rows[0] });
+  } catch (error) {
+    console.error('Error deleting Vendor C item:', error);
+    res.status(500).json({ message: 'Gagal delete data (DB Delete C)' });
+  }
+});
+
+//route gabungan
 app.use('/marketplace', marketplaceRouter);
 
-
-// ===========================
-//     HANDLER 404
-// ===========================
 app.use((req, res) => {
   res.status(404).json({ error: 'ga ada' });
 });
 
-
-// ===========================
-//        JALANKAN SERVER
-// ===========================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log('jalan di port ' + PORT);
